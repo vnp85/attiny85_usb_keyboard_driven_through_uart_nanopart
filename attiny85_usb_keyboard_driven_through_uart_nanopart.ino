@@ -1,0 +1,105 @@
+// see https://github.com/vnp85/attiny85_usb_keyboard_driven_through_uart
+
+#include <SoftwareSerial.h>
+#define PIN_MYSERIAL_RX 2
+#define PIN_MYSERIAL_TX A0
+
+SoftwareSerial mySerial(PIN_MYSERIAL_RX, PIN_MYSERIAL_TX);
+
+#define MOD_CONTROL_LEFT    (1<<0)
+#define MOD_SHIFT_LEFT      (1<<1)
+#define MOD_ALT_LEFT        (1<<2)
+#define MOD_GUI_LEFT        (1<<3)
+#define MOD_CONTROL_RIGHT   (1<<4)
+#define MOD_SHIFT_RIGHT     (1<<5)
+#define MOD_ALT_RIGHT       (1<<6)
+#define MOD_GUI_RIGHT       (1<<7)
+
+#define KEY_1       30
+#define KEY_2       31
+#define KEY_3       32
+#define KEY_4       33
+#define KEY_5       34
+#define KEY_6       35
+#define KEY_7       36
+#define KEY_8       37
+#define KEY_9       38
+#define KEY_0       39
+
+#define KEY_F1      58
+#define KEY_F2      59
+#define KEY_F3      60
+#define KEY_F4      61
+#define KEY_F5      62
+#define KEY_F6      63
+#define KEY_F7      64
+#define KEY_F8      65
+#define KEY_F9      66
+#define KEY_F10     67
+#define KEY_F11     68
+#define KEY_F12     69
+
+void setup(){
+  Serial.begin(9600);
+  mySerial.begin(9600);
+  pinMode(A1, INPUT_PULLUP);
+  pinMode(A2, INPUT_PULLUP);
+  pinMode(A3, INPUT_PULLUP);
+  //pullup soldered in
+  pinMode(A6, INPUT);
+  pinMode(A7, INPUT);
+}
+
+uint32_t lastReceivedButtonAtMillis;
+int lastReceivedButton;
+
+void receiveButton(int b){
+  if ((millis() - lastReceivedButtonAtMillis > 1000) || (b!=lastReceivedButton)){
+     lastReceivedButton = b;
+     char msg[16];
+     byte key = KEY_F12 - (b - 1);     
+     strcpy(msg, "#s");
+     if (key < 16){
+      strcat(msg, "0");
+     }
+     itoa(key, msg+strlen(msg), 16);
+     byte modifier=MOD_CONTROL_LEFT | MOD_SHIFT_LEFT | MOD_ALT_LEFT;
+     if (modifier < 16){
+      strcat(msg, "0");
+     }
+     itoa(modifier, msg+strlen(msg), 16);
+     mySerial.println(msg);
+     Serial.println(msg);
+     lastReceivedButtonAtMillis = millis();
+  }
+}
+
+
+
+void loop(){
+  while (Serial.available()){
+    char c[2];
+    c[0] = Serial.read();
+    c[1] = 0;
+    //echo
+    if ((c[0] != 13)&&(c[0] != 10)){
+      mySerial.print("#e");
+      mySerial.println(c);
+    }
+  }
+  if (LOW == digitalRead(A1)){
+    receiveButton(1);
+  };
+  if (LOW == digitalRead(A2)){
+    receiveButton(2);
+  };
+  if (LOW == digitalRead(A3)){
+    receiveButton(3);
+  };
+  if (analogRead(A6) < 64){
+    receiveButton(4);
+  }
+  if (analogRead(A7) < 64){
+    receiveButton(5);
+  }
+}
