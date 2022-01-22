@@ -6,6 +6,33 @@
 
 SoftwareSerial mySerial(PIN_MYSERIAL_RX, PIN_MYSERIAL_TX);
 
+uint32_t lastReceivedButtonAtMillis;
+int lastReceivedButton;
+int lastKnownPauseState;
+
+enum TPausedState {
+  PAUSED_STATE___ROLLING,
+  PAUSED_STATE___PAUSED
+};
+
+enum TButtonId{
+  BUTTON_ID__NONE,
+
+  BUTTON_ID__SCENE_1, 
+  BUTTON_ID__SCENE_2,
+  BUTTON_ID__SCENE_3,
+  BUTTON_ID__SCENE_4,
+  BUTTON_ID__SCENE_5,
+  BUTTON_ID__START_RECORDING,
+  BUTTON_ID__STOP_RECORDING,
+  BUTTON_ID__RESERVED_FOR_NOW_AS_PHYSICALLY_NOT_IMPLEMENTED,
+  BUTTON_ID__PAUSE,
+  BUTTON_ID__UNPAUSE___VIRTUAL_BUTTON,
+  
+  BUTTON_ID__FIRST_INVALID_ITEM
+};
+
+
 #define MOD_CONTROL_LEFT    (1<<0)
 #define MOD_SHIFT_LEFT      (1<<1)
 #define MOD_ALT_LEFT        (1<<2)
@@ -48,15 +75,31 @@ void setup(){
   //pullup soldered in
   pinMode(A6, INPUT);
   pinMode(A7, INPUT);
+  pinMode(4, INPUT_PULLUP);
+  pinMode(5, INPUT_PULLUP);
+  pinMode(6, INPUT_PULLUP);
+  pinMode(7, INPUT_PULLUP);
 }
 
-uint32_t lastReceivedButtonAtMillis;
-int lastReceivedButton;
 
 void receiveButton(int b){
   if ((millis() - lastReceivedButtonAtMillis > 1000) || (b!=lastReceivedButton)){
      lastReceivedButton = b;
      char msg[16];
+     if (BUTTON_ID__START_RECORDING == b){
+       lastKnownPauseState = PAUSED_STATE___ROLLING;
+     }
+     if (BUTTON_ID__STOP_RECORDING == b){
+       lastKnownPauseState = PAUSED_STATE___ROLLING;
+     }
+     if (BUTTON_ID__PAUSE == b){
+       if (PAUSED_STATE___PAUSED == lastKnownPauseState){
+         lastKnownPauseState = PAUSED_STATE___ROLLING;
+         b = BUTTON_ID__UNPAUSE___VIRTUAL_BUTTON;
+       }else{
+         lastKnownPauseState = PAUSED_STATE___PAUSED;
+       }
+     }
      byte key = KEY_F12 - (b - 1);     
      strcpy(msg, "#s");
      if (key < 16){
@@ -88,18 +131,33 @@ void loop(){
     }
   }
   if (LOW == digitalRead(A1)){
-    receiveButton(1);
+    receiveButton(BUTTON_ID__SCENE_1);
   };
   if (LOW == digitalRead(A2)){
-    receiveButton(2);
+    receiveButton(BUTTON_ID__SCENE_2);
   };
   if (LOW == digitalRead(A3)){
-    receiveButton(3);
+    receiveButton(BUTTON_ID__SCENE_3);
   };
   if (analogRead(A6) < 64){
-    receiveButton(4);
+    receiveButton(BUTTON_ID__SCENE_4);
   }
   if (analogRead(A7) < 64){
-    receiveButton(5);
+    receiveButton(BUTTON_ID__SCENE_5);
   }
+
+  if (LOW == digitalRead(4)){
+    receiveButton(BUTTON_ID__START_RECORDING);
+  }
+  if (LOW == digitalRead(5)){
+    receiveButton(BUTTON_ID__STOP_RECORDING);
+  }
+  if (LOW == digitalRead(6)){
+    receiveButton(BUTTON_ID__RESERVED_FOR_NOW_AS_PHYSICALLY_NOT_IMPLEMENTED);
+  }
+  if (LOW == digitalRead(7)){
+    // physically missing
+    receiveButton(BUTTON_ID__PAUSE);
+  }
+
 }
